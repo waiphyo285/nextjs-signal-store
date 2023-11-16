@@ -1,7 +1,7 @@
 "use client";
 
 import Signal from "@/signal/index";
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 
 type ISignal = {
   count: number;
@@ -22,15 +22,7 @@ export default function Home() {
   const handleIncrement = () => handleUpdateCount(1);
   const handleReset = () => handleUpdateCount(-count);
 
-  const observer: (state: ISignal) => void = useCallback(
-    (state) => setCount(state.count),
-    []
-  );
-
-  useEffect(() => {
-    signal.subscribe(observer);
-    return () => signal.unsubscribe(observer);
-  }, [observer]);
+  signal.subscribe((state: ISignal) => setCount(state.count));
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-between p-24">

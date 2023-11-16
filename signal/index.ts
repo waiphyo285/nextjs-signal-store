@@ -1,10 +1,10 @@
-export class Signal<T> {
+class Signal<T> {
   private state: T;
-  private observers: any[];
+  private observers: Set<any>;
 
   constructor(initialState: T) {
     this.state = initialState;
-    this.observers = [];
+    this.observers = new Set();
   }
 
   get() {
@@ -17,12 +17,12 @@ export class Signal<T> {
   }
 
   subscribe(observer: any) {
-    this.observers.push(observer);
+    this.observers.add(observer);
+    return () => this.unsubscribe(observer);
   }
 
   unsubscribe(observer: any) {
-    const index = this.observers.indexOf(observer);
-    if (index !== -1) this.observers.splice(index, 1);
+    this.observers.delete(observer);
   }
 
   emitSignal() {
