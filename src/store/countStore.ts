@@ -1,4 +1,4 @@
-import createSignal from "@/src/signal/index";
+import { createSignal } from "@/src/signal";
 
 type ISignal = { count: number };
 

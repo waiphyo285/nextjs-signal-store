@@ -1,6 +1,11 @@
-import createSignal from "@/src/signal/index";
+import { createSignal } from "@/src/signal";
 
-type IUser = { id: number; name: string; email: string };
-type IUserSignal = { users: IUser[] };
+type IUserSignal = { users: { id: number; name: string; email: string }[] };
 
-export const userSignal = createSignal<IUserSignal>({ users: [] });
+export const userSignal = createSignal<IUserSignal>({ users: [] }, "userStore");
+
+export const fetchUsers = async () => {
+  const response = await fetch("https://jsonplaceholder.typicode.com/users");
+  const data = await response.json();
+  userSignal.setState({ users: data });
+};

@@ -1,81 +1,70 @@
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 
 type Observer<T> = (state: T) => void;
 type Middleware<T> = (prevState: T, nextState: T) => T;
 
-class SignalStore<T> {
-  private state: T;
-  private observers: Set<Observer<T>>;
-  private middlewares: Middleware<T>[];
-  private storageKey?: string;
+export function createSignal<T>(initialState: T, storageKey?: string) {
+  let state: T = initialState;
+  const observers = new Set<Observer<T>>();
+  const middlewares: Middleware<T>[] = [];
 
-  constructor(initialState: T, storageKey?: string) {
-    this.observers = new Set();
-    this.middlewares = [];
-    this.storageKey = storageKey;
-    this.state =
-      typeof window !== "undefined" && storageKey
-        ? this.loadState(storageKey, initialState)
-        : initialState;
-  }
-
-  private loadState(storageKey: string, fallback: T): T {
-    const saved = localStorage.getItem(storageKey);
-    return saved ? JSON.parse(saved) : fallback;
-  }
-
-  private saveState() {
-    if (typeof window !== "undefined" && this.storageKey) {
-      localStorage.setItem(this.storageKey, JSON.stringify(this.state));
+  const loadState = (storageKey: string, fallback: T): T => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem(storageKey);
+      return saved ? JSON.parse(saved) : fallback;
     }
-  }
+    return fallback;
+  };
 
-  private emitSignal() {
+  const saveState = () => {
+    if (typeof window !== "undefined" && storageKey) {
+      localStorage.setItem(storageKey, JSON.stringify(state));
+    }
+  };
+
+  const emitSignal = () => {
     requestAnimationFrame(() => {
-      this.observers.forEach((observer) => observer(this.state));
+      observers.forEach((observer) => observer(state));
     });
-  }
+  };
 
-  get(): T {
-    return this.state;
-  }
+  const getState = () => state;
 
-  set(newState: Partial<T>) {
-    const updatedState = { ...this.state, ...newState };
+  const setState = (newState: Partial<T>) => {
+    const updatedState = { ...state, ...newState };
 
-    if (JSON.stringify(updatedState) !== JSON.stringify(this.state)) {
+    if (JSON.stringify(updatedState) !== JSON.stringify(state)) {
       let finalState = updatedState;
 
-      for (const middleware of this.middlewares) {
-        finalState = middleware(this.state, finalState);
+      for (const middleware of middlewares) {
+        finalState = middleware(state, finalState);
       }
 
-      this.state = finalState;
-      this.emitSignal();
-      this.saveState();
+      state = finalState;
+      emitSignal();
+      saveState();
     }
-  }
+  };
 
-  subscribe(observer: Observer<T>): () => void {
-    this.observers.add(observer);
-    observer(this.state);
-    return () => this.observers.delete(observer);
-  }
+  const subscribe = (observer: Observer<T>): (() => void) => {
+    observers.add(observer);
+    observer(state);
+    return () => observers.delete(observer);
+  };
 
-  useStore(): T {
-    const [state, setState] = useState(this.get());
+  // Add getServerSnapshot for SSR support
+  const getServerSnapshot = (): T => {
+    return state; // You can adjust this to provide an SSR-compatible state
+  };
 
-    useEffect(() => {
-      const unsubscribe = this.subscribe(setState);
-      return () => unsubscribe();
-    }, []);
+  // Use hook to subscribe and get the current state
+  const useStore = (): T => {
+    return useSyncExternalStore(
+      (callback) => subscribe(callback),
+      getState, // Client-side snapshot (default)
+      getServerSnapshot // Server-side snapshot (required for SSR)
+    );
+  };
 
-    return state;
-  }
+  return { useStore, setState, getState, subscribe, loadState, saveState };
 }
-
-function createSignal<T>(initialState: T, storageKey?: string): SignalStore<T> {
-  return new SignalStore<T>(initialState, storageKey);
-}
-
-export default createSignal;
