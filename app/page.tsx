@@ -1,59 +1,73 @@
 "use client";
 
-import Signal from "@/signal/index";
-import { useState } from "react";
-
-type ISignal = {
-  count: number;
-};
-
-const signal = new Signal<ISignal>({ count: 0 });
+import { useEffect, useState } from "react";
+import { fetchUsers } from "@/src/api/user";
+import { countSignal } from "@/src/store/countStore";
+import { userSignal } from "@/src/store/userStore";
 
 export default function Home() {
-  const { count: init_count } = signal.get();
+  const [mounted, setMounted] = useState(false);
+  const { count } = countSignal.useStore();
+  const { users } = userSignal.useStore();
 
-  const [count, setCount] = useState(init_count);
+  useEffect(() => {
+    setMounted(true);
+    fetchUsers();
+  }, []);
 
-  const handleUpdateCount = (delta: number) => {
-    signal.set({ count: count + delta });
-  };
-
-  const handleDecrement = () => handleUpdateCount(-1);
-  const handleIncrement = () => handleUpdateCount(1);
-  const handleReset = () => handleUpdateCount(-count);
-
-  signal.subscribe((state: ISignal) => setCount(state.count));
+  // Prevent hydration mismatch
+  if (!mounted) {
+    return <></>; // Instead of <div>Loading...</div>, return an empty fragment
+  }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="relative flex place-items-center before:absolute before:h-[300px] before:w-[480px] before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-[240px] after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 before:lg:h-[360px] z-[-1]">
-        <h1 className="h1 text-3xl">Reactive by Signal</h1>
+    <div className="max-w-3xl mx-auto p-6 space-y-6 shadow-lg rounded-lg">
+      {/* Counter Section */}
+      <div className="text-center mb-10">
+        <h1 className="text-2xl font-semibold mb-4">Counter: {count}</h1>
+
+        <div className="mt-4 space-x-3">
+          <button
+            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+            onClick={() => countSignal.set({ count: count + 1 })}
+          >
+            Increment
+          </button>
+          <button
+            className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
+            onClick={() => countSignal.set({ count: count - 1 })}
+          >
+            Decrement
+          </button>
+          <button
+            className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
+            onClick={() => countSignal.set({ count: 0 })}
+          >
+            Reset
+          </button>
+        </div>
       </div>
 
-      <div className="mb-32 grid text-center lg:max-w-5xl lg:w-full lg:mb-0 lg:grid-cols-4 lg:text-left">
-        <h4 className="h4 text-2xl lg:mb-4 m-2 ">Count: {count}</h4>
+      {/* User List Section */}
+      <div>
+        <h1 className="text-2xl font-semibold text-center mb-4">User List</h1>
 
-        <button
-          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 m-2 rounded"
-          onClick={handleDecrement}
-        >
-          Decrement
-        </button>
-
-        <button
-          className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 m-2 rounded"
-          onClick={handleIncrement}
-        >
-          Increment
-        </button>
-
-        <button
-          className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 m-2 rounded"
-          onClick={handleReset}
-        >
-          Reset
-        </button>
+        {users.length > 0 && (
+          <ul className="space-y-4">
+            {users.map((user) => (
+              <li
+                key={user.id}
+                className="p-4 bg-gray-100 rounded-lg transition"
+              >
+                <h2 className="text-lg font-medium text-gray-800">
+                  {user.name}
+                </h2>
+                <p className="text-sm text-gray-500">{user.email}</p>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
-    </main>
+    </div>
   );
 }
