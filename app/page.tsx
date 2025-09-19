@@ -10,9 +10,6 @@ export default function Home() {
   const { count } = countSignal.useStore();
   const { users } = userSignal.useStore();
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
 
   useEffect(() => {
     setMounted(true);
